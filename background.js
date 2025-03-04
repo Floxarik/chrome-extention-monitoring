@@ -1,57 +1,68 @@
 chrome.runtime.onInstalled.addListener(() => {
   console.log("Extension monitoring started");
   checkExtensions();
-  setInterval(checkExtensions, 60000); // Проверка каждую минуту
+  setInterval(checkExtensions, 60000);
 });
 
-// Список ID расширений, за которыми следим
-const monitoredExtensions = [
-  "EXTENSION_ID_1", // Заменить на реальные ID расширений
-  "EXTENSION_ID_2",
-];
+// Список ID отслеживаемых расширений
+const monitoredExtensions = ["EXTENSION_ID_1", "EXTENSION_ID_2"];
 
 function checkExtensions() {
   chrome.management.getAll((extensions) => {
+    let disabledExtensions = [];
+
     monitoredExtensions.forEach((extId) => {
       const extension = extensions.find((e) => e.id === extId);
-      if (!extension) {
-        console.log(`❌ Расширение с ID ${extId} не найдено.`);
-        return;
-      }
+      if (!extension) return;
+
       if (!extension.enabled) {
         console.log(`⚠️ Расширение ${extension.name} отключено!`);
-        notifyDisabled(extension.name);
-      } else {
-        console.log(`✅ Расширение ${extension.name} активно.`);
+        disabledExtensions.push(extension.name);
       }
     });
+
+    chrome.storage.local.set({ disabledExtensions: disabledExtensions });
+    updateBadge(disabledExtensions.length);
   });
 }
 
-// Функция отправки уведомлений
-function notifyDisabled(extName) {
-  chrome.notifications.create(
-    {
-      type: "basic",
-      iconUrl: "icon.png",
-      title: "Расширение отключено",
-      message: `Расширение '${extName}' отключено! Включите его в настройках.`,
-      priority: 2,
-    },
-    (notificationId) => {
-      if (chrome.runtime.lastError) {
-        console.error("Ошибка создания уведомления:", chrome.runtime.lastError);
-      } else {
-        console.log(`🔔 Уведомление отправлено: ${notificationId}`);
-      }
-    }
-  );
+// Показываем значок на иконке
+function updateBadge(count) {
+  if (count > 0) {
+    chrome.action.setBadgeText({ text: count.toString() });
+    chrome.action.setBadgeBackgroundColor({ color: "#FF0000" });
+  } else {
+    chrome.action.setBadgeText({ text: "" });
+  }
 }
 
-// Реагируем на отключение расширения
+// Когда расширение отключено
 chrome.management.onDisabled.addListener((extension) => {
   if (monitoredExtensions.includes(extension.id)) {
     console.log(`🔴 Расширение ${extension.name} было отключено!`);
-    notifyDisabled(extension.name);
+    chrome.storage.local.get("disabledExtensions", (data) => {
+      let disabled = data.disabledExtensions || [];
+      if (!disabled.includes(extension.name)) {
+        disabled.push(extension.name);
+        chrome.storage.local.set({ disabledExtensions: disabled });
+        updateBadge(disabled.length);
+      }
+    });
+  }
+});
+
+// Когда расширение включено
+chrome.management.onEnabled.addListener((extension) => {
+  if (monitoredExtensions.includes(extension.id)) {
+    console.log(`🟢 Расширение ${extension.name} включено!`);
+    chrome.storage.local.get("disabledExtensions", (data) => {
+      let disabled = data.disabledExtensions || [];
+      let index = disabled.indexOf(extension.name);
+      if (index !== -1) {
+        disabled.splice(index, 1);
+        chrome.storage.local.set({ disabledExtensions: disabled });
+        updateBadge(disabled.length);
+      }
+    });
   }
 });

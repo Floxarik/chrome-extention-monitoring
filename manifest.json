@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "Extension Monitor",
+  "version": "1.1",
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": ["management", "notifications"],
+  "icons": {
+    "16": "icon.png",
+    "48": "icon.png",
+    "128": "icon.png"
+  },
+  "action": {
+    "default_icon": "icon.png"
+  }
+}

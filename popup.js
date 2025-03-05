@@ -9,11 +9,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const notificationFrequencyContainer = document.getElementById(
     "notificationFrequencyContainer"
   );
-  const notificationFrequencyInput = document.getElementById(
-    "notificationFrequency"
-  );
 
-  // Показываем/скрываем поле ввода частоты уведомлений
+  // Show/hide notification frequency input based on checkbox state
   enableNotificationsCheckbox.addEventListener("change", () => {
     if (enableNotificationsCheckbox.checked) {
       notificationFrequencyContainer.style.display = "block";
@@ -22,18 +19,21 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  // Open settings screen
   document.getElementById("open-settings").addEventListener("click", () => {
     mainScreen.classList.add("hidden");
     settingsScreen.classList.remove("hidden");
   });
 
+  // Go back to main screen
   document.getElementById("back").addEventListener("click", () => {
     settingsScreen.classList.add("hidden");
     mainScreen.classList.remove("hidden");
     successMessage.style.display = "none";
-    loadSettings(); // Загружаем актуальные данные при возврате
+    loadSettings();
   });
 
+  // Load settings from storage
   function loadSettings() {
     chrome.storage.local.get(
       [
@@ -46,7 +46,7 @@ document.addEventListener("DOMContentLoaded", () => {
         let monitoredExtensions = data.monitoredExtensions || [];
         let disabledExtensions = data.disabledExtensions || [];
         let enableSystemNotifications = data.enableSystemNotifications || false;
-        let notificationFrequency = data.notificationFrequency || 15; // Дефолтное значение: 15 секунд
+        let notificationFrequency = data.notificationFrequency || 15; // Default: 15 seconds
 
         document.getElementById("extensionsList").value =
           monitoredExtensions.join("\n");
@@ -55,7 +55,7 @@ document.addEventListener("DOMContentLoaded", () => {
         document.getElementById("notificationFrequency").value =
           notificationFrequency;
 
-        // Показываем/скрываем поле ввода частоты уведомлений
+        // Show/hide frequency input based on checkbox state
         if (enableSystemNotifications) {
           notificationFrequencyContainer.style.display = "block";
         } else {
@@ -67,12 +67,13 @@ document.addEventListener("DOMContentLoaded", () => {
     );
   }
 
+  // Save settings
   document.getElementById("save").addEventListener("click", () => {
     let extensions = document
       .getElementById("extensionsList")
       .value.split("\n")
       .map((id) => id.trim())
-      .filter((id) => id); // Удалена валидация на правильность ввода ID
+      .filter((id) => id); // Remove empty lines
     let enableNotifications = document.getElementById(
       "enableNotifications"
     ).checked;
@@ -81,15 +82,16 @@ document.addEventListener("DOMContentLoaded", () => {
       10
     );
 
-    // Проверка ввода частоты уведомлений
+    // Validate notification frequency input
     if (
       isNaN(notificationFrequency) ||
       notificationFrequency < 10 ||
       notificationFrequency > 3600
     ) {
-      notificationFrequency = 15; // Дефолтное значение, если введено некорректное значение
+      notificationFrequency = 15; // Default: 15 seconds
     }
 
+    // Save settings to storage
     chrome.storage.local.set(
       {
         monitoredExtensions: extensions,
@@ -97,12 +99,12 @@ document.addEventListener("DOMContentLoaded", () => {
         notificationFrequency: notificationFrequency,
       },
       () => {
-        successMessage.style.display = "inline"; // Показываем сообщение об успехе
+        successMessage.style.display = "inline"; // Show success message
         setTimeout(() => {
           successMessage.style.display = "none";
         }, 2000);
 
-        // После сохранения настроек проверяем состояние расширений
+        // Check extensions after saving settings
         chrome.runtime.sendMessage(
           { action: "checkExtensions" },
           (response) => {
@@ -120,6 +122,7 @@ document.addEventListener("DOMContentLoaded", () => {
     );
   });
 
+  // Update the status message in the popup
   function updateStatusMessage(disabledExtensions, monitoredExtensions) {
     if (!monitoredExtensions.length) {
       notification.innerText = "⚠ No monitored extensions.";
@@ -133,16 +136,17 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // Обработчик сообщений из background.js
+  // Listener for messages from background.js
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === "updateStatus") {
       updateStatusMessage(
         message.disabledExtensions,
         message.monitoredExtensions
       );
-      sendResponse({ success: true }); // Отправляем ответ, чтобы избежать ошибки
+      sendResponse({ success: true });
     }
   });
 
+  // Load settings when the popup opens
   loadSettings();
 });

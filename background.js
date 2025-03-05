@@ -1,18 +1,19 @@
 let notificationInterval = null;
 
-// Проверка состояния расширений при запуске браузера
+// Check extension status when the browser starts
 chrome.runtime.onStartup.addListener(() => {
   console.log("Browser started, checking extensions...");
   checkExtensions();
 });
 
+// Initialize extension monitoring when installed
 chrome.runtime.onInstalled.addListener(() => {
   console.log("Extension monitoring started");
   checkExtensions();
-  startPeriodicNotifications(); // Запускаем периодические уведомления
+  startPeriodicNotifications();
 });
 
-// Функция для проверки состояния расширений
+// Function to check the status of monitored extensions
 function checkExtensions() {
   chrome.storage.local.get(
     ["monitoredExtensions", "enableSystemNotifications"],
@@ -29,13 +30,10 @@ function checkExtensions() {
           if (!extension.enabled) {
             console.log(`⚠ Extension ${extension.name} is disabled!`);
             disabledExtensions.push(extension.name);
-
-            if (enableSystemNotifications) {
-              sendNotification(extension.name); // Создаем уведомление, если включены системные уведомления
-            }
           }
         });
 
+        // Save disabled extensions to storage
         chrome.storage.local.set(
           { disabledExtensions: disabledExtensions },
           () => {
@@ -47,21 +45,33 @@ function checkExtensions() {
             }
           }
         );
-        updateBadge(disabledExtensions.length); // Обновляем бейдж
-        updatePopupStatus(disabledExtensions, monitoredExtensions); // Обновляем статус в popup
+        updateBadge(disabledExtensions.length);
+        updatePopupStatus(disabledExtensions, monitoredExtensions);
+
+        // Send a single notification with the list of disabled extensions
+        if (enableSystemNotifications && disabledExtensions.length > 0) {
+          sendNotification(disabledExtensions);
+        }
       });
     }
   );
 }
 
-// Функция для отправки уведомлений
-function sendNotification(extensionName) {
+// Function to send a system notification with a list of disabled extensions
+function sendNotification(disabledExtensions) {
+  if (disabledExtensions.length === 0) return; // No need to send a notification if no extensions are disabled
+
+  const message =
+    disabledExtensions.length === 1
+      ? `Extension ${disabledExtensions[0]} is turned off!`
+      : `Extensions turned off: ${disabledExtensions.join(", ")}`;
+
   chrome.notifications.create(
     {
       type: "basic",
-      iconUrl: "icon.png", // Убедитесь, что файл icon.png существует
+      iconUrl: "icon.png", // Ensure icon.png exists in the extension directory
       title: "Extension Disabled!",
-      message: `Extension ${extensionName} is turned off!`,
+      message: message,
       priority: 2,
     },
     (notificationId) => {
@@ -74,17 +84,17 @@ function sendNotification(extensionName) {
   );
 }
 
-// Функция для обновления бейджа
+// Function to update the badge on the extension icon
 function updateBadge(count) {
   if (count > 0) {
     chrome.action.setBadgeText({ text: count.toString() });
-    chrome.action.setBadgeBackgroundColor({ color: "#FF0000" }); // Красный цвет бейджа
+    chrome.action.setBadgeBackgroundColor({ color: "#FF0000" }); // Red badge
   } else {
-    chrome.action.setBadgeText({ text: "" }); // Скрываем бейдж, если нет отключенных расширений
+    chrome.action.setBadgeText({ text: "" }); // Hide badge if no extensions are disabled
   }
 }
 
-// Функция для обновления статуса в popup
+// Function to update the status in the popup
 function updatePopupStatus(disabledExtensions, monitoredExtensions) {
   chrome.runtime.sendMessage(
     {
@@ -94,7 +104,6 @@ function updatePopupStatus(disabledExtensions, monitoredExtensions) {
     },
     (response) => {
       if (chrome.runtime.lastError) {
-        // Ошибка возникает, если popup закрыт
         console.log("Popup is closed, message not sent.");
       } else {
         console.log("Popup status updated.");
@@ -103,17 +112,13 @@ function updatePopupStatus(disabledExtensions, monitoredExtensions) {
   );
 }
 
-// Слушатель для события отключения расширения
+// Listener for when an extension is disabled
 chrome.management.onDisabled.addListener((extension) => {
   chrome.storage.local.get(
     ["monitoredExtensions", "enableSystemNotifications"],
     (data) => {
       if ((data.monitoredExtensions || []).includes(extension.id)) {
         console.log(`🔴 Extension ${extension.name} was disabled!`);
-
-        if (data.enableSystemNotifications) {
-          sendNotification(extension.name); // Создаем уведомление, если включены системные уведомления
-        }
 
         chrome.storage.local.get("disabledExtensions", (data) => {
           let disabled = data.disabledExtensions || [];
@@ -127,8 +132,13 @@ chrome.management.onDisabled.addListener((extension) => {
                 );
               }
             });
-            updateBadge(disabled.length); // Обновляем бейдж
-            updatePopupStatus(disabled, data.monitoredExtensions || []); // Обновляем статус в popup
+            updateBadge(disabled.length);
+            updatePopupStatus(disabled, data.monitoredExtensions || []);
+
+            // Send a single notification with the updated list of disabled extensions
+            if (data.enableSystemNotifications) {
+              sendNotification(disabled);
+            }
           }
         });
       }
@@ -136,7 +146,7 @@ chrome.management.onDisabled.addListener((extension) => {
   );
 });
 
-// Слушатель для события включения расширения
+// Listener for when an extension is enabled
 chrome.management.onEnabled.addListener((extension) => {
   chrome.storage.local.get(
     ["monitoredExtensions", "disabledExtensions"],
@@ -155,46 +165,51 @@ chrome.management.onEnabled.addListener((extension) => {
               );
             }
           });
-          updateBadge(disabled.length); // Обновляем бейдж
-          updatePopupStatus(disabled, data.monitoredExtensions || []); // Обновляем статус в popup
+          updateBadge(disabled.length);
+          updatePopupStatus(disabled, data.monitoredExtensions || []);
+
+          // If there are still disabled extensions, send an updated notification
+          if (data.enableSystemNotifications && disabled.length > 0) {
+            sendNotification(disabled);
+          }
         }
       }
     }
   );
 });
 
-// Периодические уведомления
+// Function to start periodic notifications
 function startPeriodicNotifications() {
   chrome.storage.local.get(
     ["enableSystemNotifications", "notificationFrequency"],
     (data) => {
       if (data.enableSystemNotifications) {
-        const frequency = data.notificationFrequency || 15; // Дефолтное значение: 15 секунд
+        const frequency = data.notificationFrequency || 15; // Default: 15 seconds
         if (notificationInterval) {
-          clearInterval(notificationInterval); // Очищаем предыдущий интервал
+          clearInterval(notificationInterval);
         }
         notificationInterval = setInterval(() => {
-          checkExtensions(); // Проверяем состояние расширений и показываем уведомления
-        }, frequency * 1000); // Преобразуем секунды в миллисекунды
+          checkExtensions();
+        }, frequency * 1000); // Convert seconds to milliseconds
       }
     }
   );
 }
 
-// Запускаем периодические уведомления при старте
+// Start periodic notifications on extension load
 startPeriodicNotifications();
 
-// Обновляем интервал при изменении настроек
+// Update notification interval when settings change
 chrome.storage.onChanged.addListener((changes) => {
   if (changes.enableSystemNotifications || changes.notificationFrequency) {
-    startPeriodicNotifications(); // Перезапускаем интервал при изменении настроек
+    startPeriodicNotifications();
   }
 });
 
-// Обработчик сообщений из popup.js
+// Listener for messages from popup.js
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "checkExtensions") {
-    checkExtensions(); // Проверяем состояние расширений
-    sendResponse({ success: true }); // Отправляем ответ, чтобы избежать ошибки
+    checkExtensions();
+    sendResponse({ success: true });
   }
 });

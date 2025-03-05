@@ -1,14 +1,15 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Мониторинг расширений</title>
+    <title>Extension Monitor</title>
     <style>
       body {
         font-family: Arial, sans-serif;
         padding: 10px;
-        width: 250px;
+        width: 260px;
+        position: relative;
       }
       .alert {
         background-color: #ffcccc;
@@ -17,12 +18,55 @@
         border-radius: 5px;
         display: none;
       }
+      .hidden {
+        display: none;
+      }
+      .settings-icon {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        cursor: pointer;
+        font-size: 18px;
+      }
+      textarea {
+        width: 100%;
+        height: 80px;
+      }
+      button {
+        padding: 5px;
+        cursor: pointer;
+        margin-top: 5px;
+      }
+      .save-message {
+        color: green;
+        font-size: 14px;
+        display: none;
+        margin-top: 5px;
+      }
     </style>
   </head>
   <body>
-    <h3>Статус расширений</h3>
-    <div id="notification" class="alert"></div>
-    <button id="close">Закрыть</button>
+    <!-- Main screen -->
+    <div id="main-screen">
+      <span class="settings-icon" id="open-settings">⚙️</span>
+      <h3>Extension Status</h3>
+      <div id="notification" class="alert"></div>
+    </div>
+
+    <!-- Settings screen -->
+    <div id="settings-screen" class="hidden">
+      <h3>Settings</h3>
+      <label>
+        <input type="checkbox" id="enableNotifications" /> Enable system
+        notifications
+      </label>
+      <br /><br />
+      <label>Enter extension IDs (one per line):</label>
+      <textarea id="extensionsList"></textarea>
+      <button id="save">Save</button>
+      <button id="back">Back</button>
+      <div id="saveMessage" class="save-message">✔ Settings saved</div>
+    </div>
 
     <script src="popup.js"></script>
   </body>

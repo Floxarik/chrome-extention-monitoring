@@ -1,18 +1,19 @@
 {
   "manifest_version": 3,
   "name": "Extension Monitor",
-  "version": "1.2",
+  "version": "1.1",
+  "description": "Мониторинг отключенных расширений",
+  "permissions": ["management", "notifications", "storage"],
+  "host_permissions": ["*://*/*"],
   "background": {
     "service_worker": "background.js"
   },
-  "permissions": ["management", "storage"],
-  "icons": {
-    "16": "icon.png",
-    "48": "icon.png",
-    "128": "icon.png"
-  },
   "action": {
-    "default_icon": "icon.png",
-    "default_popup": "popup.html"
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icon.png",
+      "48": "icon.png",
+      "128": "icon.png"
+    }
   }
 }

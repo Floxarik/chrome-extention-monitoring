@@ -6,17 +6,16 @@
     <title>Extension Monitor</title>
     <style>
       body {
-        font-family: Arial, sans-serif;
-        padding: 10px;
-        width: 260px;
-        position: relative;
+        font-family: "Inter", sans-serif;
+        padding: 15px;
+        width: 280px;
+        background: #f9f9f9;
       }
-      .alert {
-        background-color: #ffcccc;
-        color: #900;
-        padding: 10px;
-        border-radius: 5px;
-        display: none;
+      .status-message {
+        font-size: 14px;
+        font-weight: 500;
+        color: #333;
+        margin-top: 10px;
       }
       .hidden {
         display: none;
@@ -26,34 +25,47 @@
         top: 5px;
         right: 5px;
         cursor: pointer;
-        font-size: 18px;
+        font-size: 20px;
       }
       textarea {
         width: 100%;
         height: 80px;
+        font-size: 14px;
+        padding: 5px;
       }
       button {
-        padding: 5px;
+        padding: 6px 12px;
         cursor: pointer;
-        margin-top: 5px;
-      }
-      .save-message {
-        color: green;
+        margin-top: 10px;
         font-size: 14px;
+        background: #007bff;
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+      }
+      button:hover {
+        background: #0056b3;
+      }
+      .actions {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 10px;
+      }
+      #success-message {
         display: none;
-        margin-top: 5px;
+        color: #28a745;
+        font-weight: 500;
       }
     </style>
   </head>
   <body>
-    <!-- Main screen -->
     <div id="main-screen">
       <span class="settings-icon" id="open-settings">⚙️</span>
       <h3>Extension Status</h3>
-      <div id="notification" class="alert"></div>
+      <div id="notification" class="status-message"></div>
     </div>
 
-    <!-- Settings screen -->
     <div id="settings-screen" class="hidden">
       <h3>Settings</h3>
       <label>
@@ -63,9 +75,11 @@
       <br /><br />
       <label>Enter extension IDs (one per line):</label>
       <textarea id="extensionsList"></textarea>
-      <button id="save">Save</button>
-      <button id="back">Back</button>
-      <div id="saveMessage" class="save-message">✔ Settings saved</div>
+      <div class="actions">
+        <button id="back">Back</button>
+        <span id="success-message">✅ Changes saved</span>
+        <button id="save">Save</button>
+      </div>
     </div>
 
     <script src="popup.js"></script>

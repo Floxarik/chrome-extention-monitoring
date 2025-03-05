@@ -18,7 +18,7 @@ function checkExtensions() {
           if (!extension) return;
 
           if (!extension.enabled) {
-            console.log(`⚠️ Extension ${extension.name} is disabled!`);
+            console.log(`⚠ Extension ${extension.name} is disabled!`);
             disabledExtensions.push(extension.name);
 
             if (enableSystemNotifications) {
@@ -38,28 +38,22 @@ function checkExtensions() {
           }
         });
 
-        chrome.storage.local.set(
-          { disabledExtensions: disabledExtensions },
-          () => {
-            updateBadge(disabledExtensions.length);
-          }
-        );
+        chrome.storage.local.set({ disabledExtensions: disabledExtensions });
+        updateBadge(disabledExtensions.length);
       });
     }
   );
 }
 
-// 🔄 **Function to update the extension icon badge**
-function updateBadge(disabledCount) {
-  if (disabledCount > 0) {
-    chrome.action.setBadgeText({ text: disabledCount.toString() });
+function updateBadge(count) {
+  if (count > 0) {
+    chrome.action.setBadgeText({ text: count.toString() });
     chrome.action.setBadgeBackgroundColor({ color: "#FF0000" });
   } else {
     chrome.action.setBadgeText({ text: "" });
   }
 }
 
-// 📌 **When an extension is disabled**
 chrome.management.onDisabled.addListener((extension) => {
   chrome.storage.local.get(
     ["monitoredExtensions", "enableSystemNotifications"],
@@ -86,9 +80,8 @@ chrome.management.onDisabled.addListener((extension) => {
           let disabled = data.disabledExtensions || [];
           if (!disabled.includes(extension.name)) {
             disabled.push(extension.name);
-            chrome.storage.local.set({ disabledExtensions: disabled }, () => {
-              updateBadge(disabled.length);
-            });
+            chrome.storage.local.set({ disabledExtensions: disabled });
+            updateBadge(disabled.length);
           }
         });
       }
@@ -96,34 +89,19 @@ chrome.management.onDisabled.addListener((extension) => {
   );
 });
 
-// ✅ **When an extension is enabled**
 chrome.management.onEnabled.addListener((extension) => {
-  chrome.storage.local.get(
-    ["monitoredExtensions", "disabledExtensions"],
-    (data) => {
-      let monitoredExtensions = data.monitoredExtensions || [];
-      let disabled = data.disabledExtensions || [];
-
-      if (monitoredExtensions.includes(extension.id)) {
-        console.log(`🟢 Extension ${extension.name} is enabled!`);
+  chrome.storage.local.get("monitoredExtensions", (data) => {
+    if ((data.monitoredExtensions || []).includes(extension.id)) {
+      console.log(`🟢 Extension ${extension.name} is enabled!`);
+      chrome.storage.local.get("disabledExtensions", (data) => {
+        let disabled = data.disabledExtensions || [];
         let index = disabled.indexOf(extension.name);
         if (index !== -1) {
           disabled.splice(index, 1);
-          chrome.storage.local.set({ disabledExtensions: disabled }, () => {
-            updateBadge(disabled.length);
-          });
+          chrome.storage.local.set({ disabledExtensions: disabled });
+          updateBadge(disabled.length);
         }
-      }
+      });
     }
-  );
-});
-
-// 🚀 **Update badge when settings change**
-chrome.storage.onChanged.addListener((changes, area) => {
-  if (
-    area === "local" &&
-    (changes.monitoredExtensions || changes.disabledExtensions)
-  ) {
-    checkExtensions();
-  }
+  });
 });

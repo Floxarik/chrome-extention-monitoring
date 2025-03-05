@@ -2,41 +2,41 @@ document.addEventListener("DOMContentLoaded", () => {
   const mainScreen = document.getElementById("main-screen");
   const settingsScreen = document.getElementById("settings-screen");
   const notification = document.getElementById("notification");
-  const saveMessage = document.getElementById("saveMessage");
+  const successMessage = document.getElementById("success-message");
 
-  // Open settings screen
   document.getElementById("open-settings").addEventListener("click", () => {
     mainScreen.classList.add("hidden");
     settingsScreen.classList.remove("hidden");
   });
 
-  // Return to the main screen
   document.getElementById("back").addEventListener("click", () => {
     settingsScreen.classList.add("hidden");
     mainScreen.classList.remove("hidden");
+    successMessage.style.display = "none";
+    loadSettings(); // Загружаем актуальные данные при возврате
   });
 
-  // Load saved settings
-  chrome.storage.local.get(
-    ["disabledExtensions", "monitoredExtensions", "enableSystemNotifications"],
-    (data) => {
-      if (data.disabledExtensions && data.disabledExtensions.length > 0) {
-        notification.style.display = "block";
-        notification.innerHTML =
-          "Disabled extensions:<br>" + data.disabledExtensions.join("<br>");
-      } else {
-        notification.style.display = "none";
+  function loadSettings() {
+    chrome.storage.local.get(
+      [
+        "disabledExtensions",
+        "monitoredExtensions",
+        "enableSystemNotifications",
+      ],
+      (data) => {
+        let monitoredExtensions = data.monitoredExtensions || [];
+        let disabledExtensions = data.disabledExtensions || [];
+
+        document.getElementById("extensionsList").value =
+          monitoredExtensions.join("\n");
+        document.getElementById("enableNotifications").checked =
+          data.enableSystemNotifications || false;
+
+        updateStatusMessage(disabledExtensions, monitoredExtensions);
       }
+    );
+  }
 
-      document.getElementById("extensionsList").value = (
-        data.monitoredExtensions || []
-      ).join("\n");
-      document.getElementById("enableNotifications").checked =
-        data.enableSystemNotifications || false;
-    }
-  );
-
-  // Save settings
   document.getElementById("save").addEventListener("click", () => {
     let extensions = document
       .getElementById("extensionsList")
@@ -53,41 +53,27 @@ document.addEventListener("DOMContentLoaded", () => {
         enableSystemNotifications: enableNotifications,
       },
       () => {
-        console.log("✅ Settings saved.");
-
-        // Remove deleted extensions from the disabled list
-        chrome.storage.local.get("disabledExtensions", (data) => {
-          let disabled = data.disabledExtensions || [];
-          let updatedDisabled = disabled.filter((name) =>
-            extensions.includes(name)
-          );
-
-          chrome.storage.local.set(
-            { disabledExtensions: updatedDisabled },
-            () => {
-              console.log("🔄 Disabled extensions list updated.");
-              updatePopupDisplay();
-
-              // Show "Settings saved" message
-              saveMessage.style.display = "block";
-              setTimeout(() => (saveMessage.style.display = "none"), 2000);
-            }
-          );
-        });
+        successMessage.style.display = "inline";
+        setTimeout(() => {
+          successMessage.style.display = "none";
+        }, 2000);
+        updateStatusMessage([], extensions);
       }
     );
   });
 
-  // Function to update the popup display
-  function updatePopupDisplay() {
-    chrome.storage.local.get("disabledExtensions", (data) => {
-      if (data.disabledExtensions && data.disabledExtensions.length > 0) {
-        notification.style.display = "block";
-        notification.innerHTML =
-          "Disabled extensions:<br>" + data.disabledExtensions.join("<br>");
-      } else {
-        notification.style.display = "none";
-      }
-    });
+  function updateStatusMessage(disabledExtensions, monitoredExtensions) {
+    if (!monitoredExtensions.length) {
+      notification.innerText = "⚠ No monitored extensions.";
+      notification.style.color = "#cc0000";
+    } else if (!disabledExtensions.length) {
+      notification.innerText = "✅ All monitored extensions are active.";
+      notification.style.color = "#28a745";
+    } else {
+      notification.innerText = "❌ Disabled: " + disabledExtensions.join(", ");
+      notification.style.color = "#cc0000";
+    }
   }
+
+  loadSettings();
 });

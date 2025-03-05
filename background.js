@@ -1,5 +1,11 @@
 let notificationInterval = null;
 
+// Проверка состояния расширений при запуске браузера
+chrome.runtime.onStartup.addListener(() => {
+  console.log("Browser started, checking extensions...");
+  checkExtensions();
+});
+
 chrome.runtime.onInstalled.addListener(() => {
   console.log("Extension monitoring started");
   checkExtensions();

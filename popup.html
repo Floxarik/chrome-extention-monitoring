@@ -32,6 +32,7 @@
         height: 80px;
         font-size: 14px;
         padding: 5px;
+        margin-top: 10px;
       }
       button {
         padding: 6px 12px;
@@ -57,6 +58,12 @@
         color: #28a745;
         font-weight: 500;
       }
+      small {
+        display: block;
+        font-size: 12px;
+        color: #666;
+        margin-top: 5px;
+      }
     </style>
   </head>
   <body>
@@ -74,6 +81,10 @@
       </label>
       <br /><br />
       <label>Enter extension IDs (one per line):</label>
+      <small
+        >You can find extension IDs on the
+        <code>chrome://extensions</code> page.</small
+      >
       <textarea id="extensionsList"></textarea>
       <div class="actions">
         <button id="back">Back</button>

@@ -42,7 +42,7 @@ document.addEventListener("DOMContentLoaded", () => {
       .getElementById("extensionsList")
       .value.split("\n")
       .map((id) => id.trim())
-      .filter((id) => id);
+      .filter((id) => id); // Удалена валидация на правильность ввода ID
     let enableNotifications = document.getElementById(
       "enableNotifications"
     ).checked;
@@ -53,11 +53,13 @@ document.addEventListener("DOMContentLoaded", () => {
         enableSystemNotifications: enableNotifications,
       },
       () => {
-        successMessage.style.display = "inline";
+        successMessage.style.display = "inline"; // Показываем сообщение об успехе
         setTimeout(() => {
           successMessage.style.display = "none";
         }, 2000);
-        updateStatusMessage([], extensions);
+
+        // После сохранения настроек проверяем состояние расширений
+        chrome.runtime.sendMessage({ action: "checkExtensions" });
       }
     );
   });
@@ -73,6 +75,12 @@ document.addEventListener("DOMContentLoaded", () => {
       notification.innerText = "❌ Disabled: " + disabledExtensions.join(", ");
       notification.style.color = "#cc0000";
     }
+
+    // Отправляем сообщение в background.js для обновления бейджа
+    chrome.runtime.sendMessage({
+      action: "updateBadge",
+      count: disabledExtensions.length,
+    });
   }
 
   loadSettings();

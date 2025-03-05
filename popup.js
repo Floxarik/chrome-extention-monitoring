@@ -3,6 +3,24 @@ document.addEventListener("DOMContentLoaded", () => {
   const settingsScreen = document.getElementById("settings-screen");
   const notification = document.getElementById("notification");
   const successMessage = document.getElementById("success-message");
+  const enableNotificationsCheckbox = document.getElementById(
+    "enableNotifications"
+  );
+  const notificationFrequencyContainer = document.getElementById(
+    "notificationFrequencyContainer"
+  );
+  const notificationFrequencyInput = document.getElementById(
+    "notificationFrequency"
+  );
+
+  // Показываем/скрываем поле ввода частоты уведомлений
+  enableNotificationsCheckbox.addEventListener("change", () => {
+    if (enableNotificationsCheckbox.checked) {
+      notificationFrequencyContainer.style.display = "block";
+    } else {
+      notificationFrequencyContainer.style.display = "none";
+    }
+  });
 
   document.getElementById("open-settings").addEventListener("click", () => {
     mainScreen.classList.add("hidden");
@@ -22,15 +40,27 @@ document.addEventListener("DOMContentLoaded", () => {
         "disabledExtensions",
         "monitoredExtensions",
         "enableSystemNotifications",
+        "notificationFrequency",
       ],
       (data) => {
         let monitoredExtensions = data.monitoredExtensions || [];
         let disabledExtensions = data.disabledExtensions || [];
+        let enableSystemNotifications = data.enableSystemNotifications || false;
+        let notificationFrequency = data.notificationFrequency || 15; // Дефолтное значение: 15 секунд
 
         document.getElementById("extensionsList").value =
           monitoredExtensions.join("\n");
         document.getElementById("enableNotifications").checked =
-          data.enableSystemNotifications || false;
+          enableSystemNotifications;
+        document.getElementById("notificationFrequency").value =
+          notificationFrequency;
+
+        // Показываем/скрываем поле ввода частоты уведомлений
+        if (enableSystemNotifications) {
+          notificationFrequencyContainer.style.display = "block";
+        } else {
+          notificationFrequencyContainer.style.display = "none";
+        }
 
         updateStatusMessage(disabledExtensions, monitoredExtensions);
       }
@@ -46,11 +76,25 @@ document.addEventListener("DOMContentLoaded", () => {
     let enableNotifications = document.getElementById(
       "enableNotifications"
     ).checked;
+    let notificationFrequency = parseInt(
+      document.getElementById("notificationFrequency").value,
+      10
+    );
+
+    // Проверка ввода частоты уведомлений
+    if (
+      isNaN(notificationFrequency) ||
+      notificationFrequency < 10 ||
+      notificationFrequency > 3600
+    ) {
+      notificationFrequency = 15; // Дефолтное значение, если введено некорректное значение
+    }
 
     chrome.storage.local.set(
       {
         monitoredExtensions: extensions,
         enableSystemNotifications: enableNotifications,
+        notificationFrequency: notificationFrequency,
       },
       () => {
         successMessage.style.display = "inline"; // Показываем сообщение об успехе
@@ -59,7 +103,19 @@ document.addEventListener("DOMContentLoaded", () => {
         }, 2000);
 
         // После сохранения настроек проверяем состояние расширений
-        chrome.runtime.sendMessage({ action: "checkExtensions" });
+        chrome.runtime.sendMessage(
+          { action: "checkExtensions" },
+          (response) => {
+            if (chrome.runtime.lastError) {
+              console.error(
+                "Error sending message to background.js:",
+                chrome.runtime.lastError
+              );
+            } else {
+              console.log("Message sent to background.js successfully.");
+            }
+          }
+        );
       }
     );
   });
@@ -75,13 +131,18 @@ document.addEventListener("DOMContentLoaded", () => {
       notification.innerText = "❌ Disabled: " + disabledExtensions.join(", ");
       notification.style.color = "#cc0000";
     }
-
-    // Отправляем сообщение в background.js для обновления бейджа
-    chrome.runtime.sendMessage({
-      action: "updateBadge",
-      count: disabledExtensions.length,
-    });
   }
+
+  // Обработчик сообщений из background.js
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.action === "updateStatus") {
+      updateStatusMessage(
+        message.disabledExtensions,
+        message.monitoredExtensions
+      );
+      sendResponse({ success: true }); // Отправляем ответ, чтобы избежать ошибки
+    }
+  });
 
   loadSettings();
 });

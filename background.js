@@ -1,7 +1,9 @@
+let notificationInterval = null;
+
 chrome.runtime.onInstalled.addListener(() => {
   console.log("Extension monitoring started");
   checkExtensions();
-  setInterval(checkExtensions, 60000); // Проверка каждую минуту
+  startPeriodicNotifications(); // Запускаем периодические уведомления
 });
 
 // Функция для проверки состояния расширений
@@ -40,6 +42,7 @@ function checkExtensions() {
           }
         );
         updateBadge(disabledExtensions.length); // Обновляем бейдж
+        updatePopupStatus(disabledExtensions, monitoredExtensions); // Обновляем статус в popup
       });
     }
   );
@@ -52,7 +55,7 @@ function sendNotification(extensionName) {
       type: "basic",
       iconUrl: "icon.png", // Убедитесь, что файл icon.png существует
       title: "Extension Disabled!",
-      message: `Extension ${extensionName} is turned off!`, // Используем extensionName вместо extension
+      message: `Extension ${extensionName} is turned off!`,
       priority: 2,
     },
     (notificationId) => {
@@ -73,6 +76,25 @@ function updateBadge(count) {
   } else {
     chrome.action.setBadgeText({ text: "" }); // Скрываем бейдж, если нет отключенных расширений
   }
+}
+
+// Функция для обновления статуса в popup
+function updatePopupStatus(disabledExtensions, monitoredExtensions) {
+  chrome.runtime.sendMessage(
+    {
+      action: "updateStatus",
+      disabledExtensions: disabledExtensions,
+      monitoredExtensions: monitoredExtensions,
+    },
+    (response) => {
+      if (chrome.runtime.lastError) {
+        // Ошибка возникает, если popup закрыт
+        console.log("Popup is closed, message not sent.");
+      } else {
+        console.log("Popup status updated.");
+      }
+    }
+  );
 }
 
 // Слушатель для события отключения расширения
@@ -100,6 +122,7 @@ chrome.management.onDisabled.addListener((extension) => {
               }
             });
             updateBadge(disabled.length); // Обновляем бейдж
+            updatePopupStatus(disabled, data.monitoredExtensions || []); // Обновляем статус в popup
           }
         });
       }
@@ -127,33 +150,45 @@ chrome.management.onEnabled.addListener((extension) => {
             }
           });
           updateBadge(disabled.length); // Обновляем бейдж
+          updatePopupStatus(disabled, data.monitoredExtensions || []); // Обновляем статус в popup
         }
       }
     }
   );
 });
 
-// Обработчик сообщений из popup.js
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.action === "updateBadge") {
-    updateBadge(message.count); // Обновляем бейдж
-  } else if (message.action === "checkExtensions") {
-    checkExtensions(); // Проверяем состояние расширений
+// Периодические уведомления
+function startPeriodicNotifications() {
+  chrome.storage.local.get(
+    ["enableSystemNotifications", "notificationFrequency"],
+    (data) => {
+      if (data.enableSystemNotifications) {
+        const frequency = data.notificationFrequency || 15; // Дефолтное значение: 15 секунд
+        if (notificationInterval) {
+          clearInterval(notificationInterval); // Очищаем предыдущий интервал
+        }
+        notificationInterval = setInterval(() => {
+          checkExtensions(); // Проверяем состояние расширений и показываем уведомления
+        }, frequency * 1000); // Преобразуем секунды в миллисекунды
+      }
+    }
+  );
+}
+
+// Запускаем периодические уведомления при старте
+startPeriodicNotifications();
+
+// Обновляем интервал при изменении настроек
+chrome.storage.onChanged.addListener((changes) => {
+  if (changes.enableSystemNotifications || changes.notificationFrequency) {
+    startPeriodicNotifications(); // Перезапускаем интервал при изменении настроек
   }
 });
 
-// Периодические уведомления
-function startPeriodicNotifications() {
-  setInterval(() => {
-    chrome.storage.local.get(
-      ["monitoredExtensions", "enableSystemNotifications"],
-      (data) => {
-        if (data.enableSystemNotifications) {
-          checkExtensions(); // Проверяем состояние расширений и показываем уведомления
-        }
-      }
-    );
-  }, 3600000); // Уведомления каждые 60 минут (3600000 мс)
-}
-
-startPeriodicNotifications(); // Запускаем периодические уведомления
+// Обработчик сообщений из popup.js
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.action === "checkExtensions") {
+    checkExtensions(); // Проверяем состояние расширений
+    sendResponse({ success: true }); // Отправляем ответ, чтобы избежать ошибки
+  }
+});

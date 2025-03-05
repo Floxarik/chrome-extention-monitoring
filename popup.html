@@ -34,6 +34,12 @@
         padding: 5px;
         margin-top: 10px;
       }
+      input[type="number"] {
+        width: 100%;
+        font-size: 14px;
+        padding: 5px;
+        margin-top: 10px;
+      }
       button {
         padding: 6px 12px;
         cursor: pointer;
@@ -64,6 +70,9 @@
         color: #666;
         margin-top: 5px;
       }
+      #notificationFrequencyContainer {
+        display: none; /* Скрываем по умолчанию */
+      }
     </style>
   </head>
   <body>
@@ -80,11 +89,19 @@
         notifications
       </label>
       <br /><br />
+      <div id="notificationFrequencyContainer">
+        <label>Notification frequency (in seconds):</label>
+        <input
+          type="number"
+          id="notificationFrequency"
+          min="10"
+          max="3600"
+          value="15"
+        />
+        <small>Min: 10 seconds, Max: 3600 seconds (1 hour).</small>
+      </div>
+      <br /><br />
       <label>Enter extension IDs (one per line):</label>
-      <small
-        >You can find extension IDs on the
-        <code>chrome://extensions</code> page.</small
-      >
       <textarea id="extensionsList"></textarea>
       <div class="actions">
         <button id="back">Back</button>
